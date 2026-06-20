@@ -25,6 +25,9 @@
   header.top .sub{color:var(--mut);margin-top:3px;font-size:13.5px}
   .updated{color:var(--mut);font-size:12px;margin-top:7px}
   .updated b{color:var(--txt)}
+  .refresh{margin-left:8px;background:var(--card);border:1px solid var(--line);color:var(--mut);
+    border-radius:999px;padding:3px 10px;font-size:12px;cursor:pointer}
+  .refresh:active{transform:scale(.96)}
 
   .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:16px 0}
   .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
@@ -48,7 +51,6 @@
   h2.sec{font-size:17px;margin:4px 0 12px;display:flex;align-items:center;gap:8px}
   .note{color:var(--mut);font-size:12.5px;margin:10px 2px 0}
 
-  /* ---- leaderboard list ---- */
   .lblist{display:flex;flex-direction:column;gap:8px}
   .lbrow{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);
     border-radius:14px;padding:11px 13px}
@@ -77,7 +79,6 @@
   .b0{background:rgba(255,210,74,.20);color:var(--gold)}
   .b2{background:rgba(170,120,255,.24);color:#c3a6ff}
 
-  /* ---- match cards ---- */
   .mcards{display:grid;grid-template-columns:1fr;gap:10px}
   .mcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 13px}
   .mc-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
@@ -90,12 +91,10 @@
   .chip{display:flex;align-items:center;justify-content:space-between;gap:5px;font-size:12px;
     padding:5px 8px;border-radius:8px;background:var(--bg2);min-width:0}
   .chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mut)}
-  .chip b{flex:0 0 auto;font-weight:800;font-size:12.5px;width:16px;text-align:center;border-radius:4px}
+  .chip b{flex:0 0 auto;font-weight:800;font-size:12.5px;width:16px;text-align:center}
   .chip.ok{background:rgba(55,211,155,.14)} .chip.ok b{color:var(--ok)} .chip.ok span{color:#cdeede}
   .chip.bad{background:rgba(255,95,109,.10)} .chip.bad b{color:var(--bad)}
-  .chip.pend b{color:var(--pend)}
 
-  /* ---- matrix (Všechny tipy) ---- */
   .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:14px}
   table.matrix{border-collapse:separate;border-spacing:0;width:auto;min-width:100%}
   .matrix th,.matrix td{padding:7px 7px;text-align:center;font-size:12px;border-bottom:1px solid var(--line)}
@@ -119,7 +118,6 @@
   .legend span{display:inline-flex;align-items:center;gap:6px}
   .swatch{width:13px;height:13px;border-radius:4px;display:inline-block}
 
-  /* ---- stats / success ---- */
   .funfact{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px}
   .funfact h3{margin:0 0 5px;font-size:13px;color:var(--acc);text-transform:uppercase;letter-spacing:.4px}
   .funfact p{margin:0;font-size:14px}
@@ -137,18 +135,18 @@
   .c-count{color:var(--acc);font-weight:800;flex:0 0 auto}
   .c-names{color:var(--mut);font-size:13px;flex:1 1 100%}
 
+  #status{text-align:center;padding:40px 16px;color:var(--mut)}
+  #status .spin{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--acc);
+    border-radius:50%;margin:0 auto 12px;animation:rot 1s linear infinite}
+  @keyframes rot{to{transform:rotate(360deg)}}
+  #status.err{color:#ffb4ba}
+  #status .retry{margin-top:14px}
+
   footer{margin-top:32px;text-align:center;color:var(--mut);font-size:12px;line-height:1.6}
 
-  /* ---- desktop niceties ---- */
-  @media(min-width:560px){
-    .cards{grid-template-columns:repeat(4,1fr)}
-  }
-  @media(min-width:620px){
-    .mcards{grid-template-columns:repeat(2,1fr)}
-  }
-  @media(min-width:900px){
-    .mcards{grid-template-columns:repeat(3,1fr)}
-  }
+  @media(min-width:560px){ .cards{grid-template-columns:repeat(4,1fr)} }
+  @media(min-width:620px){ .mcards{grid-template-columns:repeat(2,1fr)} }
+  @media(min-width:900px){ .mcards{grid-template-columns:repeat(3,1fr)} }
 </style>
 </head>
 <body>
@@ -156,205 +154,307 @@
   <header class="top">
     <h1>🏆 Tipovačka MS&nbsp;2026</h1>
     <div class="sub">Žebříček a statistiky naší tipovačky</div>
-    <div class="updated">Aktualizováno: <b id="updated"></b> · <span id="progress"></span></div>
+    <div class="updated" id="updatedLine" style="display:none">
+      Načteno: <b id="updated"></b> · <span id="progress"></span>
+      <button class="refresh" id="refreshBtn">↻ obnovit</button>
+    </div>
   </header>
 
-  <div class="cards" id="cards"></div>
+  <div id="status"><div class="spin"></div>Načítám data z Google Sheetu…</div>
 
-  <nav class="tabs" id="tabs">
-    <button data-t="zebricek" class="active">🏅 Žebříček</button>
-    <button data-t="zapasy">⚽ Zápasy</button>
-    <button data-t="vsechny">📋 Všechny tipy</button>
-    <button data-t="staty">📊 Statistiky</button>
-    <button data-t="vitez">👑 Vítěz</button>
-  </nav>
+  <div id="app" style="display:none">
+    <div class="cards" id="cards"></div>
 
-  <section id="zebricek" class="show">
-    <h2 class="sec">🏅 Pořadí</h2>
-    <div class="lblist" id="lbList"></div>
-    <p class="note">Body = počet správně tipnutých výsledků (1&nbsp;bod/zápas). Bonus za vítěze turnaje
-      (+5&nbsp;bodů) se přičte po finále. Pod jménem je tip na celkového vítěze.</p>
-  </section>
+    <nav class="tabs" id="tabs">
+      <button data-t="zebricek" class="active">🏅 Žebříček</button>
+      <button data-t="zapasy">⚽ Zápasy</button>
+      <button data-t="vsechny">📋 Všechny tipy</button>
+      <button data-t="staty">📊 Statistiky</button>
+      <button data-t="vitez">👑 Vítěz</button>
+    </nav>
 
-  <section id="zapasy">
-    <h2 class="sec">⚽ Odehrané zápasy</h2>
-    <div class="legend">
-      <span><i class="swatch" style="background:rgba(55,211,155,.6)"></i> trefil</span>
-      <span><i class="swatch" style="background:rgba(255,95,109,.5)"></i> netrefil</span>
-      <span><span class="badge b1">1</span> domácí · <span class="badge b0">0</span> remíza · <span class="badge b2">2</span> hosté</span>
-    </div>
-    <div class="mcards" id="zCards"></div>
-  </section>
+    <section id="zebricek" class="show">
+      <h2 class="sec">🏅 Pořadí</h2>
+      <div class="lblist" id="lbList"></div>
+      <p class="note">Body = počet správně tipnutých výsledků (1&nbsp;bod/zápas). Bonus za vítěze turnaje
+        (+5&nbsp;bodů) se přičte po finále. Pod jménem je tip na celkového vítěze.</p>
+    </section>
 
-  <section id="vsechny">
-    <h2 class="sec">📋 Všechny tipy</h2>
-    <div class="legend">
-      <span><span class="dot ok">1</span> trefený</span>
-      <span><span class="dot bad">2</span> mimo</span>
-      <span><span class="dot pend">1</span> neodehráno</span>
-      <span class="note" style="margin:0">← tabulkou lze rolovat do stran</span>
-    </div>
-    <div class="scroll"><table class="matrix"><thead id="mHead"></thead><tbody id="mBody"></tbody></table></div>
-  </section>
+    <section id="zapasy">
+      <h2 class="sec">⚽ Odehrané zápasy</h2>
+      <div class="legend">
+        <span><i class="swatch" style="background:rgba(55,211,155,.6)"></i> trefil</span>
+        <span><i class="swatch" style="background:rgba(255,95,109,.5)"></i> netrefil</span>
+        <span><span class="badge b1">1</span> domácí · <span class="badge b0">0</span> remíza · <span class="badge b2">2</span> hosté</span>
+      </div>
+      <div class="mcards" id="zCards"></div>
+    </section>
 
-  <section id="staty">
-    <h2 class="sec">📊 Zajímavosti</h2>
-    <div id="funfacts"></div>
-    <h2 class="sec" style="margin-top:22px">Úspěšnost hráčů</h2>
-    <div id="succList"></div>
-  </section>
+    <section id="vsechny">
+      <h2 class="sec">📋 Všechny tipy</h2>
+      <div class="legend">
+        <span><span class="dot ok">1</span> trefený</span>
+        <span><span class="dot bad">2</span> mimo</span>
+        <span><span class="dot pend">1</span> neodehráno</span>
+        <span class="note" style="margin:0">← tabulkou lze rolovat do stran</span>
+      </div>
+      <div class="scroll"><table class="matrix"><thead id="mHead"></thead><tbody id="mBody"></tbody></table></div>
+    </section>
 
-  <section id="vitez">
-    <h2 class="sec">👑 Tipy na vítěze turnaje</h2>
-    <p class="note" style="margin-top:-4px">Za trefeného vítěze je bonus +5&nbsp;bodů (vyhodnotí se po finále).</p>
-    <div id="champList" style="margin-top:12px"></div>
-  </section>
+    <section id="staty">
+      <h2 class="sec">📊 Zajímavosti</h2>
+      <div id="funfacts"></div>
+      <h2 class="sec" style="margin-top:22px">Úspěšnost hráčů</h2>
+      <div id="succList"></div>
+    </section>
 
-  <footer>
-    Postaveno z Google Sheetu tipovačky · výsledky se aktualizují automaticky během dne<br>
-    1&nbsp;bod za trefený výsledek · +5 za vítěze turnaje
-  </footer>
+    <section id="vitez">
+      <h2 class="sec">👑 Tipy na vítěze turnaje</h2>
+      <p class="note" style="margin-top:-4px">Za trefeného vítěze je bonus +5&nbsp;bodů (vyhodnotí se po finále).</p>
+      <div id="champList" style="margin-top:12px"></div>
+    </section>
+
+    <footer>
+      Data se čtou živě z Google Sheetu tipovačky · výsledky zadáváš ručně do sloupce „Výsledek"<br>
+      1&nbsp;bod za trefený výsledek · +5 za vítěze turnaje
+    </footer>
+  </div>
 </div>
 
-<script id="data" type="application/json">{"players": ["Tomis ml.", "Ďurfina", "Hodovanec", "Sváťa", "Prokůpek", "Olča", "Lékarník", "Šámal", "Jarda Plechatý", "Knotek", "Křížek", "Pepíno", "Pešek", "Kulča", "Andy", "Vrabčák", "Piešťanský", "Tomis st", "Johny", "Leoš", "Šrámek", "Jardik", "Francik", "Doktor"], "champions": ["Španělsko", "Brazílie", "Francie", "Španělsko", "Argentina", "Brazílie", "Španělsko", "Argentina", "Argentina", "Anglie", "Španělsko", "Španělsko", "Portugalsko", "Ekvádor", "Francie", "Maroko", "Brazílie", "Francie", "Španělsko", "Argentina", "Anglie", "Španělsko", "Argentina", "Argentina"], "config": {"pointsPerMatch": 1, "championBonus": 5, "champion": null}, "matches": [{"n": 1, "home": "Mexiko", "away": "JAR", "tips": [1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]}, {"n": 2, "home": "Jižní Korea", "away": "Česko", "tips": [0, 2, 2, 0, 2, 2, 2, 2, 0, 2, 1, 0, 0, 0, 1, 1, 2, 0, 2, 0, 0, 2, 2, 0]}, {"n": 3, "home": "Kanada", "away": "Bosna a Hercegovina", "tips": [1, 0, 2, 0, 2, 1, 0, 2, 0, 0, 2, 2, 0, 0, 1, 1, 2, 0, 1, 2, 2, 1, 0, 1]}, {"n": 4, "home": "USA", "away": "Paraguay", "tips": [1, 0, 1, 1, 1, 0, 0, 2, 1, 1, 2, 0, 1, 1, 1, 0, 2, 1, 1, 2, 1, 1, 2, 1]}, {"n": 5, "home": "Katar", "away": "Švýcarsko", "tips": [2, 1, 2, 0, 0, 2, 2, 2, 2, 2, 1, 2, 2, 2, 0, 2, 2, 2, 0, 1, 2, 2, 2, 2]}, {"n": 6, "home": "Brazílie", "away": "Maroko", "tips": [1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0]}, {"n": 7, "home": "Haiti", "away": "Skotsko", "tips": [2, 0, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]}, {"n": 8, "home": "Austrálie", "away": "Turecko", "tips": [2, 1, 2, 0, 0, 2, 0, 2, 2, 0, 2, 2, 2, 1, 2, 2, 2, 0, 0, 2, 0, 0, 0, 0]}, {"n": 9, "home": "Německo", "away": "Curacao", "tips": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}, {"n": 10, "home": "Nizozemsko", "away": "Japonsko", "tips": [1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 2, 1, 0, 1, 1, 0, 1, 2, 1, 1, 1]}, {"n": 11, "home": "Pobřeží slonoviny", "away": "Ekvádor", "tips": [0, 2, 2, 2, 1, 1, 2, 2, 0, 1, 1, 0, 0, 2, 1, 0, 2, 1, 1, 0, 1, 0, 2, 1]}, {"n": 12, "home": "Švédsko", "away": "Tunisko", "tips": [1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0]}, {"n": 13, "home": "Španělsko", "away": "Kapverdy", "tips": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}, {"n": 14, "home": "Belgie", "away": "Egypt", "tips": [1, 2, 1, 0, 0, 0, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 2]}, {"n": 15, "home": "Saudská Arábie", "away": "Uruguay", "tips": [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2]}, {"n": 16, "home": "Írán", "away": "Nový Zéland", "tips": [1, 0, 2, 1, 0, 0, 0, 2, 0, 2, 0, 0, 0, 0, 1, 0, 2, 0, 1, 0, 1, 2, 1, 1]}, {"n": 17, "home": "Francie", "away": "Senegal", "tips": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]}, {"n": 18, "home": "Irák", "away": "Norsko", "tips": [2, 0, 2, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0, 2, 0, 2, 0, 2, 2, 2]}, {"n": 19, "home": "Argentina", "away": "Alžírsko", "tips": [1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1]}, {"n": 20, "home": "Rakousko", "away": "Jordánsko", "tips": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1]}, {"n": 21, "home": "Portugalsko", "away": "DR Kongo", "tips": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}, {"n": 22, "home": "Anglie", "away": "Chorvatsko", "tips": [1, 1, 1, 1, 0, 1, 1, 2, 1, 1, 1, 0, 0, 1, 0, 0, 2, 1, 1, 0, 1, 1, 1, 0]}, {"n": 23, "home": "Ghana", "away": "Panama", "tips": [1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 2, 1, 0, 1, 1]}, {"n": 24, "home": "Uzbekistán", "away": "Kolumbie", "tips": [2, 2, 2, 0, 2, 1, 2, 1, 2, 2, 0, 2, 2, 2, 2, 2, 1, 2, 2, 0, 2, 2, 2, 2]}, {"n": 25, "home": "Česko", "away": "JAR", "tips": [1, 1, 2, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 2]}, {"n": 26, "home": "Švýcarsko", "away": "Bosna a Hercegovina", "tips": [1, 1, 1, 0, 1, 1, 1, 2, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 2, 1, 1, 1, 0]}, {"n": 27, "home": "Kanada", "away": "Katar", "tips": [1, 2, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 2, 1, 0, 1, 1]}, {"n": 28, "home": "Mexiko", "away": "Jižní Korea", "tips": [1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 2, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]}, {"n": 29, "home": "USA", "away": "Austrálie", "tips": [1, 2, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1]}, {"n": 30, "home": "Skotsko", "away": "Maroko", "tips": [2, 2, 1, 0, 1, 2, 0, 2, 0, 0, 1, 1, 0, 2, 2, 2, 1, 0, 0, 1, 2, 1, 1, 2]}, {"n": 31, "home": "Brazílie", "away": "Haiti", "tips": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}, {"n": 32, "home": "Turecko", "away": "Paraguay", "tips": [0, 2, 1, 0, 2, 0, 0, 1, 0, 0, 1, 0, 1, 2, 1, 1, 1, 0, 1, 2, 1, 1, 1, 2]}, {"n": 33, "home": "Nizozemsko", "away": "Švédsko", "tips": [1, 1, 1, 0, 0, 1, 1, 2, 1, 1, 2, 1, 0, 1, 1, 0, 2, 0, 1, 0, 0, 1, 1, 1]}, {"n": 34, "home": "Německo", "away": "Pobřeží slonoviny", "tips": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 2, 1, 1, 1, 1]}, {"n": 35, "home": "Ekvádor", "away": "Curacao", "tips": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1]}, {"n": 36, "home": "Tunisko", "away": "Japonsko", "tips": [2, 1, 2, 2, 0, 2, 0, 1, 0, 2, 2, 2, 0, 0, 2, 2, 1, 2, 2, 0, 2, 1, 2, 0]}, {"n": 37, "home": "Španělsko", "away": "Saudská Arábie", "tips": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}, {"n": 38, "home": "Belgie", "away": "Írán", "tips": [1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0]}, {"n": 39, "home": "Uruguay", "away": "Kapverdy", "tips": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}, {"n": 40, "home": "Nový Zéland", "away": "Egypt", "tips": [2, 2, 2, 2, 0, 2, 0, 2, 2, 0, 2, 0, 0, 2, 2, 2, 2, 2, 2, 0, 2, 1, 2, 2]}, {"n": 41, "home": "Argentina", "away": "Rakousko", "tips": [1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}, {"n": 42, "home": "Francie", "away": "Irák", "tips": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}, {"n": 43, "home": "Norsko", "away": "Senegal", "tips": [1, 0, 1, 0, 2, 0, 1, 2, 0, 0, 0, 2, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0]}, {"n": 44, "home": "Jordánsko", "away": "Alžírsko", "tips": [2, 0, 2, 0, 2, 2, 2, 2, 2, 2, 0, 2, 0, 2, 2, 2, 1, 2, 0, 2, 2, 0, 0, 2]}, {"n": 45, "home": "Portugalsko", "away": "Uzbekistán", "tips": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}, {"n": 46, "home": "Anglie", "away": "Ghana", "tips": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}, {"n": 47, "home": "Panama", "away": "Chorvatsko", "tips": [2, 0, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 0, 2, 2, 2, 2, 0, 2, 2, 2, 2]}, {"n": 48, "home": "Kolumbie", "away": "DR Kongo", "tips": [1, 1, 2, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 0, 1, 1]}, {"n": 49, "home": "Švýcarsko", "away": "Kanada", "tips": [0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0]}, {"n": 50, "home": "Bosna a Hercegovina", "away": "Katar", "tips": [1, 2, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 2, 0, 1, 0, 1, 1, 1, 1]}, {"n": 51, "home": "Maroko", "away": "Haiti", "tips": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}, {"n": 52, "home": "Skotsko", "away": "Brazílie", "tips": [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]}, {"n": 53, "home": "JAR", "away": "Jižní Korea", "tips": [2, 1, 1, 0, 2, 0, 0, 2, 0, 0, 2, 2, 0, 2, 0, 2, 2, 0, 2, 1, 2, 0, 0, 0]}, {"n": 54, "home": "Česko", "away": "Mexiko", "tips": [2, 0, 2, 0, 0, 1, 1, 2, 2, 1, 2, 2, 0, 2, 2, 2, 1, 2, 2, 2, 2, 0, 1, 2]}, {"n": 55, "home": "Curacao", "away": "Pobřeží slonoviny", "tips": [2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 0, 2, 2, 2, 2]}, {"n": 56, "home": "Ekvádor", "away": "Německo", "tips": [2, 0, 2, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]}, {"n": 57, "home": "Tunisko", "away": "Nizozemsko", "tips": [2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 0, 0, 2, 2, 0, 2, 0, 0, 2, 2, 0]}, {"n": 58, "home": "Japonsko", "away": "Švédsko", "tips": [1, 0, 2, 2, 2, 0, 0, 2, 1, 0, 2, 0, 0, 1, 0, 1, 2, 0, 0, 0, 1, 0, 2, 1]}, {"n": 59, "home": "Turecko", "away": "USA", "tips": [1, 0, 1, 0, 2, 2, 2, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 2, 0, 2, 1, 1, 2, 0]}, {"n": 60, "home": "Paraguay", "away": "Austrálie", "tips": [1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 0, 0, 1, 1, 1, 2, 1]}, {"n": 61, "home": "Norsko", "away": "Francie", "tips": [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 1, 0, 2, 2, 2, 2, 2, 2, 2, 0]}, {"n": 62, "home": "Senegal", "away": "Irák", "tips": [1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 2, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1]}, {"n": 63, "home": "Kapverdy", "away": "Saudská Arábie", "tips": [0, 0, 2, 2, 1, 1, 2, 2, 2, 0, 0, 2, 1, 2, 2, 0, 2, 2, 2, 2, 2, 0, 2, 2]}, {"n": 64, "home": "Uruguay", "away": "Španělsko", "tips": [2, 0, 2, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 0, 2, 0, 2, 2, 2, 1]}, {"n": 65, "home": "Nový Zéland", "away": "Belgie", "tips": [2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2]}, {"n": 66, "home": "Egypt", "away": "Írán", "tips": [1, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0]}, {"n": 67, "home": "Panama", "away": "Anglie", "tips": [2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]}, {"n": 68, "home": "Chorvatsko", "away": "Ghana", "tips": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 2, 0, 1, 1, 2, 1, 1, 1, 1]}, {"n": 69, "home": "Kolumbie", "away": "Portugalsko", "tips": [2, 2, 2, 0, 0, 0, 2, 2, 0, 2, 2, 2, 2, 0, 2, 0, 2, 0, 0, 2, 2, 2, 2, 0]}, {"n": 70, "home": "DR Kongo", "away": "Uzbekistán", "tips": [1, 0, 2, 0, 1, 1, 0, 2, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 2, 0, 0, 1]}, {"n": 71, "home": "Alžírsko", "away": "Rakousko", "tips": [1, 0, 2, 0, 2, 2, 0, 2, 1, 2, 2, 0, 0, 0, 2, 2, 2, 1, 2, 0, 1, 2, 2, 0]}, {"n": 72, "home": "Jordánsko", "away": "Argentina", "tips": [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]}], "results": {"1": [2, 0], "2": [2, 1], "3": [1, 1], "4": [4, 1], "5": [1, 1], "6": [1, 1], "7": [0, 1], "8": [2, 0], "9": [7, 1], "10": [2, 2], "11": [1, 0], "12": [5, 1], "13": [0, 0], "14": [1, 1], "15": [1, 1], "16": [2, 2], "17": [3, 1], "18": [1, 4], "19": [3, 0], "20": [3, 1], "21": [1, 1], "22": [4, 2], "23": [1, 0], "24": [1, 3], "25": [1, 1], "26": [4, 1], "27": [6, 0], "28": [1, 0], "29": [2, 0], "30": [0, 1], "31": [3, 0], "32": [0, 1]}, "updated": "20.06.2026 13:44"}</script>
 <script>
-const DATA = JSON.parse(document.getElementById('data').textContent);
-const {players, champions, config, matches, results, updated} = DATA;
-// krátké jméno = první slovo; pokud by kolidovalo (např. dva Tomisové), použij celé jméno
-const _tok = p => p.split(' ')[0];
-const _tokCount = {};
-players.forEach(p=>{ const t=_tok(p); _tokCount[t]=(_tokCount[t]||0)+1; });
-const short = p => _tokCount[_tok(p)]>1 ? p : _tok(p);
+// ===== Konfigurace =====
+const SHEET_ID = "1YXc6cwc4nROFWOHBN6XECBwINocPPRneBfF4wtJ0f-U";
+const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
+const CONFIG = { pointsPerMatch:1, championBonus:5 };
+const ACTUAL_CHAMPION = null;  // až bude znám vítěz turnaje, dej sem jeho jméno (česky), např. "Argentina"
 
-function outcome(h,a){ return h>a?1 : (h===a?0:2); }
-const res = {};
-for(const k in results){ const [h,a]=results[k]; res[+k]={h,a,o:outcome(h,a)}; }
-const playedCount = matches.filter(m=>res[m.n]).length;
+// Tipy na celkového vítěze jsou neměnné (zadané na začátku) a gviz CSV je z číselných
+// sloupců nevyexportuje, proto je držíme tady (mapováno podle jména hráče).
+const CHAMP_BY_NAME = {
+  "Tomis ml.":"Španělsko","Ďurfina":"Brazílie","Hodovanec":"Francie","Sváťa":"Španělsko",
+  "Prokůpek":"Argentina","Olča":"Brazílie","Lékarník":"Španělsko","Šámal":"Argentina",
+  "Jarda Plechatý":"Argentina","Knotek":"Anglie","Křížek":"Španělsko","Pepíno":"Španělsko",
+  "Pešek":"Portugalsko","Kulča":"Ekvádor","Andy":"Francie","Vrabčák":"Maroko",
+  "Piešťanský":"Brazílie","Tomis st":"Francie","Johny":"Španělsko","Leoš":"Argentina",
+  "Šrámek":"Anglie","Jardik":"Španělsko","Francik":"Argentina","Doktor":"Argentina",
+};
 
-const stats = players.map((name,i)=>({i,name,correct:0,played:0,champ:champions[i]}));
-for(const m of matches){
-  const r=res[m.n]; if(!r) continue;
-  players.forEach((_,i)=>{ stats[i].played++; if(m.tips[i]===r.o) stats[i].correct++; });
+// sloupce, které NEJSOU hráč
+const NON_PLAYER = new Set(["#","Domácí","Hosté","Zápas","Výsledek"]);
+// jak se může jmenovat sloupec s výsledky (case-insensitive)
+const RESULT_ALIASES = ["výsledek","vysledek","skóre","skore","výsledok","result"];
+
+// ===== CSV parser (zvládá uvozovky, čárky, nové řádky) =====
+function parseCSV(text){
+  const rows=[]; let row=[], field='', i=0, q=false;
+  while(i<text.length){
+    const c=text[i];
+    if(q){
+      if(c==='"'){ if(text[i+1]==='"'){field+='"';i++;} else q=false; }
+      else field+=c;
+    }else{
+      if(c==='"') q=true;
+      else if(c===','){ row.push(field); field=''; }
+      else if(c==='\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else if(c==='\r'){}
+      else field+=c;
+    }
+    i++;
+  }
+  if(field.length||row.length){ row.push(field); rows.push(row); }
+  return rows;
 }
-stats.forEach(s=>{
-  s.champBonus = (config.champion && s.champ===config.champion) ? config.championBonus : 0;
-  s.points = s.correct*config.pointsPerMatch + s.champBonus;
-  s.rate = s.played? s.correct/s.played : 0;
-});
-const ranked = [...stats].sort((a,b)=> b.points-a.points || b.rate-a.rate || a.name.localeCompare(b.name,'cs'));
-let lastPts=null, lastRank=0;
-ranked.forEach((s,idx)=>{ if(s.points!==lastPts){lastRank=idx+1; lastPts=s.points;} s.rank=lastRank; });
 
-const pct = x=> (x*100).toFixed(0)+' %';
+function norm(s){ return (s||'').trim().toLowerCase(); }
+function parseScore(s){
+  if(!s) return null;
+  const m=String(s).match(/(\d+)\s*[:\-–xX]\s*(\d+)/);
+  return m ? [parseInt(m[1],10), parseInt(m[2],10)] : null;
+}
+function outcome(h,a){ return h>a?1 : (h===a?0:2); }
+
+// ===== Parse celého sheetu =====
+function parseSheet(rows){
+  const header = rows[0].map(x=>x.trim());
+  const idx = name => header.findIndex(h=>h===name);
+  const iNum=idx("#"), iHome=idx("Domácí"), iAway=idx("Hosté"), iLabel=idx("Zápas");
+  let iRes = header.findIndex(h=>RESULT_ALIASES.includes(norm(h)));
+
+  // hráči = sloupce s neprázdným názvem, které nejsou systémové ani sloupec výsledku
+  const playerCols=[];
+  header.forEach((h,ci)=>{
+    const nm=h.trim();
+    if(!nm) return;
+    if(NON_PLAYER.has(nm)) return;
+    if(ci===iRes) return;
+    playerCols.push({name:nm, ci});
+  });
+  const players = playerCols.map(p=>p.name);
+
+  const matches=[]; let champions=null;
+  for(let r=1;r<rows.length;r++){
+    const row=rows[r]; if(!row) continue;
+    const numCell=(row[iNum]||'').trim();
+    const labelCell=(row[iLabel]||'').trim();
+    if(/vít[eě]z/i.test(labelCell)){           // řádek "Celkový vítěz:"
+      champions = playerCols.map(p=>(row[p.ci]||'').trim());
+      continue;
+    }
+    if(!/^\d+$/.test(numCell)) continue;       // jen řádky zápasů
+    const tips = playerCols.map(p=>{ const v=(row[p.ci]||'').trim(); return /^[012]$/.test(v)?parseInt(v,10):-1; });
+    matches.push({
+      n: parseInt(numCell,10),
+      home:(row[iHome]||'').trim(),
+      away:(row[iAway]||'').trim(),
+      tips,
+      result: iRes>=0 ? parseScore(row[iRes]) : null,
+    });
+  }
+  if(!champions) champions = players.map(()=> '');
+  return {players, matches, champions, hasResultCol: iRes>=0};
+}
+
+// ===== Render =====
+const pct = x=> (x*100).toFixed(0)+' %';
 const esc = s=> String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const medal = r=> r===1?'🥇':r===2?'🥈':r===3?'🥉':r;
 
-// header
-document.getElementById('updated').textContent = updated;
-document.getElementById('progress').innerHTML = `odehráno <b>${playedCount}</b>/${matches.length}`;
+function render(data){
+  const {players, matches, hasResultCol} = data;
+  // tip na vítěze: pokud ho CSV vrátí, použij ho; jinak zapečenou hodnotu podle jména
+  const champions = players.map((name,i)=> (data.champions[i]||'').trim() || CHAMP_BY_NAME[name] || '');
+  // krátké jméno = první slovo; při kolizi (dva stejní) celé jméno
+  const tok = p=>p.split(' ')[0];
+  const tc={}; players.forEach(p=>{tc[tok(p)]=(tc[tok(p)]||0)+1;});
+  const short = p=> tc[tok(p)]>1 ? p : tok(p);
 
-// cards
-const leader = ranked[0];
-const bestRate = [...stats].filter(s=>s.played>0).sort((a,b)=>b.rate-a.rate)[0];
-const gap = ranked.length>1 ? (ranked[0].points-ranked[1].points) : 0;
-const card=(lab,val,sub,sm)=>`<div class="stat"><div class="lab">${lab}</div>
-  <div class="val ${sm?'sm':''}">${val}</div>${sub?`<div class="lb-sub">${sub}</div>`:''}</div>`;
-document.getElementById('cards').innerHTML = [
-  card('Vedoucí', leader?`🥇 ${esc(short(leader.name))}`:'–', leader?`${leader.points} bodů`:'', true),
-  card('Nej úspěšnost', bestRate?esc(short(bestRate.name)):'–', bestRate?pct(bestRate.rate):'', true),
-  card('Odehráno', `${playedCount}/${matches.length}`, 'zápasů'),
-  card('Náskok v čele', gap>0?`+${gap}`:'děleno', gap>0?'bodů':'1. místo'),
-].join('');
+  matches.forEach(m=> m.o = m.result ? outcome(m.result[0],m.result[1]) : null);
+  const played = matches.filter(m=>m.result);
+  const playedCount = played.length;
 
-// leaderboard
-document.getElementById('lbList').innerHTML = ranked.map(s=>{
-  const hit = config.champion && s.champ===config.champion;
-  return `<div class="lbrow ${s.rank<=3?'r'+s.rank:''}">
-    <div class="lb-rank">${medal(s.rank)}</div>
-    <div class="lb-mid">
-      <div class="lb-name">${esc(s.name)}</div>
-      <div class="lb-champ"><span class="champ-pill ${hit?'hit':''}">👑 ${esc(s.champ)}${hit?' ✓':''}</span></div>
-    </div>
-    <div class="lb-right">
-      <div class="lb-pts">${s.points}${s.champBonus?` <span class="bonus">(+${s.champBonus})</span>`:''}</div>
-      <div class="lb-sub">${s.correct}/${s.played} · ${pct(s.rate)}</div>
-    </div>
-  </div>`;
-}).join('');
+  const stats = players.map((name,i)=>({i,name,correct:0,played:0,champ:champions[i]||''}));
+  for(const m of matches){
+    if(!m.result) continue;
+    players.forEach((_,i)=>{ stats[i].played++; if(m.tips[i]===m.o) stats[i].correct++; });
+  }
+  stats.forEach(s=>{
+    s.champBonus=(ACTUAL_CHAMPION && s.champ===ACTUAL_CHAMPION)?CONFIG.championBonus:0;
+    s.points=s.correct*CONFIG.pointsPerMatch+s.champBonus;
+    s.rate=s.played?s.correct/s.played:0;
+  });
+  const ranked=[...stats].sort((a,b)=>b.points-a.points||b.rate-a.rate||a.name.localeCompare(b.name,'cs'));
+  let lp=null,lr=0; ranked.forEach((s,i)=>{ if(s.points!==lp){lr=i+1;lp=s.points;} s.rank=lr; });
 
-// played matches -> cards
-const played = matches.filter(m=>res[m.n]).sort((a,b)=>b.n-a.n);
-document.getElementById('zCards').innerHTML = played.map(m=>{
-  const r=res[m.n];
-  const chips = m.tips.map((t,i)=>`<div class="chip ${t===r.o?'ok':'bad'}">
-    <span>${esc(short(players[i]))}</span><b>${t}</b></div>`).join('');
-  return `<div class="mcard">
-    <div class="mc-top">
-      <div class="mc-teams"><span class="mc-num">${m.n}</span>${esc(m.home)} – ${esc(m.away)}</div>
-      <div class="mc-score"><b>${r.h}<span class="o">:</span>${r.a}</b><span class="badge b${r.o}">${r.o}</span></div>
-    </div>
-    <div class="mc-chips">${chips}</div>
-  </div>`;
-}).join('') || '<p class="note">Zatím není odehraný žádný zápas.</p>';
+  document.getElementById('progress').innerHTML=`odehráno <b>${playedCount}</b>/${matches.length}`;
 
-// all tips matrix
-document.getElementById('mHead').innerHTML = `<tr>
-  <th class="mh">Zápas</th><th>Výsl.</th>
-  ${players.map(p=>`<th class="pl"><span>${esc(p)}</span></th>`).join('')}
-</tr>`;
-document.getElementById('mBody').innerHTML = matches.map(m=>{
-  const r=res[m.n];
-  const sc = r? `<span class="sc">${r.h}<span class="o">:</span>${r.a}</span>` : '<span style="color:var(--mut)">–</span>';
-  return `<tr>
-    <td class="mh">${esc(m.home)} – ${esc(m.away)}</td>
-    <td>${sc}</td>
-    ${m.tips.map(t=>{ let cls = r? (t===r.o?'ok':'bad') : 'pend';
-      return `<td><span class="dot ${cls}">${t}</span></td>`; }).join('')}
-  </tr>`;
-}).join('');
+  // cards
+  const leader=ranked[0];
+  const bestRate=[...stats].filter(s=>s.played>0).sort((a,b)=>b.rate-a.rate)[0];
+  const gap=ranked.length>1?(ranked[0].points-ranked[1].points):0;
+  const card=(lab,val,sub,sm)=>`<div class="stat"><div class="lab">${lab}</div>
+    <div class="val ${sm?'sm':''}">${val}</div>${sub?`<div class="lb-sub">${sub}</div>`:''}</div>`;
+  document.getElementById('cards').innerHTML=[
+    card('Vedoucí',leader&&playedCount?`🥇 ${esc(short(leader.name))}`:'–',leader&&playedCount?`${leader.points} bodů`:'',true),
+    card('Nej úspěšnost',bestRate?esc(short(bestRate.name)):'–',bestRate?pct(bestRate.rate):'',true),
+    card('Odehráno',`${playedCount}/${matches.length}`,'zápasů'),
+    card('Náskok v čele',gap>0?`+${gap}`:(playedCount?'děleno':'–'),gap>0?'bodů':(playedCount?'1. místo':'')),
+  ].join('');
 
-// fun facts
-const ff=[];
-if(playedCount>0){
-  let surprise=null,surpC=99,banker=null,bankC=-1,fest=null,festG=-1;
-  for(const m of played){ const r=res[m.n]; const c=m.tips.filter(t=>t===r.o).length;
-    if(c<surpC){surpC=c;surprise=m;} if(c>bankC){bankC=c;banker=m;}
-    if(r.h+r.a>festG){festG=r.h+r.a;fest=m;} }
-  ff.push(fact('🤯 Největší překvapení',
-    `<b>${esc(surprise.home)} – ${esc(surprise.away)}</b> (${res[surprise.n].h}:${res[surprise.n].a}) trefilo jen <span class="big">${surpC}</span> z ${players.length}.`));
-  ff.push(fact('✅ Nejjistější trefa',
-    `<b>${esc(banker.home)} – ${esc(banker.away)}</b> (${res[banker.n].h}:${res[banker.n].a}) trefilo <span class="big">${bankC}</span> z ${players.length}.`));
-  ff.push(fact('🎯 Nejvíc gólů',
-    `<b>${esc(fest.home)} – ${esc(fest.away)}</b> <span class="big">${res[fest.n].h}:${res[fest.n].a}</span> (${festG} gólů).`));
-}
-const unan = matches.filter(m=>m.tips.every(t=>t===m.tips[0]));
-const unanP = unan.filter(m=>res[m.n]);
-const unanHit = unanP.filter(m=>m.tips[0]===res[m.n].o).length;
-ff.push(fact('🤝 Jednomyslné tipy',
-  `Na <span class="big">${unan.length}</span> zápasů tipli všichni stejně`+
-  (unanP.length?` — z ${unanP.length} odehraných vyšlo <span class="big">${unanHit}</span>.`:'.')));
-document.getElementById('funfacts').innerHTML = ff.join('');
-function fact(h,p){ return `<div class="funfact"><h3>${h}</h3><p>${p}</p></div>`; }
-
-// success list
-document.getElementById('succList').innerHTML = [...stats]
-  .sort((a,b)=>b.rate-a.rate||b.correct-a.correct).map(s=>`
-  <div class="srow"><div class="s-name">${esc(s.name)}</div>
-    <div class="s-bar"><div class="bar"><i style="width:${(s.rate*100).toFixed(0)}%"></i></div></div>
-    <div class="s-val">${s.correct}/${s.played} · ${pct(s.rate)}</div></div>`).join('');
-
-// champions
-const byChamp={};
-champions.forEach((c,i)=>{ (byChamp[c]=byChamp[c]||[]).push(players[i]); });
-document.getElementById('champList').innerHTML = Object.entries(byChamp)
-  .sort((a,b)=>b[1].length-a[1].length).map(([c,ps])=>{
-    const hit = config.champion && c===config.champion;
-    return `<div class="crow"><div class="c-team">${esc(c)}${hit?' 👑':''}</div>
-      <div class="c-count">${ps.length}×</div>
-      <div class="c-names">${ps.map(esc).join(', ')}</div></div>`;
+  // leaderboard
+  document.getElementById('lbList').innerHTML=ranked.map(s=>{
+    const hit=ACTUAL_CHAMPION && s.champ===ACTUAL_CHAMPION;
+    return `<div class="lbrow ${s.rank<=3&&playedCount?'r'+s.rank:''}">
+      <div class="lb-rank">${playedCount?medal(s.rank):'·'}</div>
+      <div class="lb-mid"><div class="lb-name">${esc(s.name)}</div>
+        ${s.champ?`<div class="lb-champ"><span class="champ-pill ${hit?'hit':''}">👑 ${esc(s.champ)}${hit?' ✓':''}</span></div>`:''}</div>
+      <div class="lb-right"><div class="lb-pts">${s.points}${s.champBonus?` <span class="bonus">(+${s.champBonus})</span>`:''}</div>
+        <div class="lb-sub">${s.correct}/${s.played} · ${pct(s.rate)}</div></div>
+    </div>`;
   }).join('');
 
-// tabs
+  // played matches -> cards
+  const playedSorted=[...played].sort((a,b)=>b.n-a.n);
+  document.getElementById('zCards').innerHTML=playedSorted.map(m=>{
+    const chips=m.tips.map((t,i)=>`<div class="chip ${t===m.o?'ok':'bad'}">
+      <span>${esc(short(players[i]))}</span><b>${t<0?'–':t}</b></div>`).join('');
+    return `<div class="mcard"><div class="mc-top">
+      <div class="mc-teams"><span class="mc-num">${m.n}</span>${esc(m.home)} – ${esc(m.away)}</div>
+      <div class="mc-score"><b>${m.result[0]}<span class="o">:</span>${m.result[1]}</b><span class="badge b${m.o}">${m.o}</span></div>
+    </div><div class="mc-chips">${chips}</div></div>`;
+  }).join('') || `<p class="note">Zatím není odehraný žádný zápas${hasResultCol?'':' (v tabulce ještě není sloupec „Výsledek")'}.</p>`;
+
+  // matrix
+  document.getElementById('mHead').innerHTML=`<tr><th class="mh">Zápas</th><th>Výsl.</th>
+    ${players.map(p=>`<th class="pl"><span>${esc(p)}</span></th>`).join('')}</tr>`;
+  document.getElementById('mBody').innerHTML=matches.map(m=>{
+    const sc=m.result?`<span class="sc">${m.result[0]}<span class="o">:</span>${m.result[1]}</span>`:'<span style="color:var(--mut)">–</span>';
+    return `<tr><td class="mh">${esc(m.home)} – ${esc(m.away)}</td><td>${sc}</td>
+      ${m.tips.map(t=>{ let cls=m.result?(t===m.o?'ok':'bad'):'pend'; return `<td><span class="dot ${cls}">${t<0?'–':t}</span></td>`; }).join('')}</tr>`;
+  }).join('');
+
+  // fun facts
+  const ff=[];
+  if(playedCount>0){
+    let su=null,sc=99,bk=null,bc=-1,fe=null,fg=-1;
+    for(const m of playedSorted){ const c=m.tips.filter(t=>t===m.o).length;
+      if(c<sc){sc=c;su=m;} if(c>bc){bc=c;bk=m;}
+      if(m.result[0]+m.result[1]>fg){fg=m.result[0]+m.result[1];fe=m;} }
+    const fact=(h,p)=>`<div class="funfact"><h3>${h}</h3><p>${p}</p></div>`;
+    ff.push(fact('🤯 Největší překvapení',`<b>${esc(su.home)} – ${esc(su.away)}</b> (${su.result[0]}:${su.result[1]}) trefilo jen <span class="big">${sc}</span> z ${players.length}.`));
+    ff.push(fact('✅ Nejjistější trefa',`<b>${esc(bk.home)} – ${esc(bk.away)}</b> (${bk.result[0]}:${bk.result[1]}) trefilo <span class="big">${bc}</span> z ${players.length}.`));
+    ff.push(fact('🎯 Nejvíc gólů',`<b>${esc(fe.home)} – ${esc(fe.away)}</b> <span class="big">${fe.result[0]}:${fe.result[1]}</span> (${fg} gólů).`));
+    const unan=matches.filter(m=>m.tips.every(t=>t===m.tips[0]&&t>=0));
+    const unanP=unan.filter(m=>m.result); const unanHit=unanP.filter(m=>m.tips[0]===m.o).length;
+    ff.push(fact('🤝 Jednomyslné tipy',`Na <span class="big">${unan.length}</span> zápasů tipli všichni stejně`+(unanP.length?` — z ${unanP.length} odehraných vyšlo <span class="big">${unanHit}</span>.`:'.')));
+  } else {
+    ff.push(`<p class="note">Zajímavosti se objeví, jakmile bude odehraný aspoň jeden zápas.</p>`);
+  }
+  document.getElementById('funfacts').innerHTML=ff.join('');
+
+  // success
+  document.getElementById('succList').innerHTML=[...stats].sort((a,b)=>b.rate-a.rate||b.correct-a.correct).map(s=>`
+    <div class="srow"><div class="s-name">${esc(s.name)}</div>
+      <div class="s-bar"><div class="bar"><i style="width:${(s.rate*100).toFixed(0)}%"></i></div></div>
+      <div class="s-val">${s.correct}/${s.played} · ${pct(s.rate)}</div></div>`).join('');
+
+  // champions
+  const byC={}; champions.forEach((c,i)=>{ if(!c) return; (byC[c]=byC[c]||[]).push(players[i]); });
+  document.getElementById('champList').innerHTML=Object.entries(byC).sort((a,b)=>b[1].length-a[1].length).map(([c,ps])=>{
+    const hit=ACTUAL_CHAMPION&&c===ACTUAL_CHAMPION;
+    return `<div class="crow"><div class="c-team">${esc(c)}${hit?' 👑':''}</div>
+      <div class="c-count">${ps.length}×</div><div class="c-names">${ps.map(esc).join(', ')}</div></div>`;
+  }).join('') || '<p class="note">Tipy na vítěze nejsou v tabulce vyplněné.</p>';
+}
+
+// ===== Načtení =====
+function nowTime(){ const d=new Date(); return d.toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'}); }
+const csvOverride = new URLSearchParams(location.search).get('csv'); // pro testování
+
+async function load(){
+  const status=document.getElementById('status');
+  status.className=''; status.style.display=''; status.innerHTML='<div class="spin"></div>Načítám data z Google Sheetu…';
+  document.getElementById('app').style.display='none';
+  try{
+    const url=(csvOverride||GVIZ_URL)+(csvOverride?'':('&_t='+Date.now()));
+    const resp=await fetch(url,{cache:'no-store'});
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const text=await resp.text();
+    const data=parseSheet(parseCSV(text));
+    if(!data.players.length || !data.matches.length) throw new Error('Nepodařilo se přečíst tabulku (zkontroluj strukturu sheetu).');
+    render(data);
+    document.getElementById('updated').textContent=nowTime();
+    document.getElementById('updatedLine').style.display='';
+    status.style.display='none';
+    document.getElementById('app').style.display='';
+  }catch(e){
+    status.style.display='';
+    status.className='err';
+    status.innerHTML=`⚠️ Nepodařilo se načíst data.<br><span class="note">${esc(e.message||e)}</span>
+      <div class="retry"><button class="refresh" onclick="load()">↻ Zkusit znovu</button></div>`;
+  }
+}
+
+document.getElementById('refreshBtn').addEventListener('click',load);
 document.getElementById('tabs').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return;
   document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.toggle('active',x===b));
@@ -362,6 +462,7 @@ document.getElementById('tabs').addEventListener('click',e=>{
   b.scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'});
   window.scrollTo({top:0,behavior:'smooth'});
 });
+load();
 </script>
 </body>
 </html>
