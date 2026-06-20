@@ -348,14 +348,16 @@ function render(data){
   document.getElementById('progress').innerHTML=`odehráno <b>${playedCount}</b>/${matches.length}`;
 
   // cards
-  const leader=ranked[0];
-  const bestRate=[...stats].filter(s=>s.played>0).sort((a,b)=>b.rate-a.rate)[0];
+  const leaders=playedCount?ranked.filter(s=>s.points===ranked[0].points):[];
+  const leadName = leaders.length===1 ? short(leaders[0].name)
+    : leaders.length===2 ? `${short(leaders[0].name)} + ${short(leaders[1].name)}`
+    : `${leaders.length} vedoucí`;
   const gap=ranked.length>1?(ranked[0].points-ranked[1].points):0;
   const card=(lab,val,sub,sm)=>`<div class="stat"><div class="lab">${lab}</div>
     <div class="val ${sm?'sm':''}">${val}</div>${sub?`<div class="lb-sub">${sub}</div>`:''}</div>`;
   document.getElementById('cards').innerHTML=[
-    card('Vedoucí',leader&&playedCount?`🥇 ${esc(short(leader.name))}`:'–',leader&&playedCount?`${leader.points} bodů`:'',true),
-    card('Nej úspěšnost',bestRate?esc(short(bestRate.name)):'–',bestRate?pct(bestRate.rate):'',true),
+    card('Vedoucí',playedCount?`🥇 ${esc(leadName)}`:'–',playedCount?`${ranked[0].points} bodů`:'',true),
+    card('Úspěšnost vedoucího',playedCount?pct(ranked[0].rate):'–',playedCount?`${ranked[0].correct}/${ranked[0].played} trefených`:'',true),
     card('Odehráno',`${playedCount}/${matches.length}`,'zápasů'),
     card('Náskok v čele',gap>0?`+${gap}`:(playedCount?'děleno':'–'),gap>0?'bodů':(playedCount?'1. místo':'')),
   ].join('');
